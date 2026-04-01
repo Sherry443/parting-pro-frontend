@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const BASE = process.env.NEXT_PUBLIC_API_URL || 'https://parting-pro-backend.onrender.com';
 
 export const api = {
   get: (path) => fetch(`${BASE}${path}`).then(r => r.json()),

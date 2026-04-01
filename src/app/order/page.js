@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-const BRAND_LOGO_URL = 'https://westriverfuneral.partingpro.com/themes/traditional/basic.png'
+import logo from '@/assets/logo.jpg'
 
 const STEPS = ['1. Packages', '2. Memorial Goods', '3. Details', '4. Services', '5. Completion']
 
@@ -40,6 +40,7 @@ function StepBar({ current, onNavigate }) {
       <div style={{ maxWidth: 1600, margin: '0 auto', display: 'flex', alignItems: 'center', padding: '0 16px', height: 64 }}>
         <div style={{ marginRight: 40, flexShrink: 0 }}>
           <img
+            src={logo.src}
             alt="West River Funeral Directors"
             style={{ display: 'block', borderRadius: 4 }}
             width={90} height={52}
