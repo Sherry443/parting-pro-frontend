@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const BASE = process.env.NEXT_PUBLIC_API_URL || 'https://parting-pro-backend.onrender.com';
 
 // Unwrap { success, data } response — backend ne format change kiya hai
 const unwrap = (json) => json?.data !== undefined ? json.data : json;
