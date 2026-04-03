@@ -37,7 +37,7 @@ function productImage(item, fallback) {
 function StepBar({ current, onNavigate }) {
   return (
     <div style={{ borderBottom: '1px solid #e0e0e0', background: '#fff' }}>
-      <div style={{ maxWidth: 1600, margin: '0 auto', display: 'flex', alignItems: 'center', padding: '0 16px', height: 64 }}>
+      <div className="step-bar-inner">
         <div style={{ marginRight: 40, flexShrink: 0 }}>
           <img
             src="https://res.cloudinary.com/deooa4jwy/image/upload/v1775035026/logo_xajf0b.jpg"
@@ -46,17 +46,18 @@ function StepBar({ current, onNavigate }) {
             width={90} height={52}
           />
         </div>
-        <div style={{ display: 'flex', flex: 1 }}>
+        <div className="step-tabs">
           {STEPS.map((s, i) => (
             <div
               key={i}
               onClick={() => onNavigate(i)}
               style={{
-                flex: 1, textAlign: 'center', padding: '20px 8px', fontSize: 12,
+                flex: '1 0 auto', textAlign: 'center', padding: '16px 8px', fontSize: 12,
                 fontWeight: i === current ? 600 : 400,
                 color: i === current ? '#233037' : '#2e2a2a',
                 borderBottom: i === current ? '3px solid #2e2a2a' : '3px solid transparent',
-                cursor: 'pointer', userSelect: 'none',
+                cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+                minWidth: 90,
               }}
             >
               {s}
@@ -71,7 +72,7 @@ function StepBar({ current, onNavigate }) {
 
 function FlowerImage({ variant = 'purple' }) {
   return (
-    <div style={{ width: 380, height: 380, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, marginTop: '4rem' }}>
+    <div className="flower-col">
       <img
         src={FLOWER_IMAGES[variant]}
         alt="Flowers"
@@ -150,7 +151,7 @@ function Step1Packages({ order, setOrder, onNext }) {
   }
 
   if (subStep === 1) return (
-    <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'flex-start' }}>
+    <div className="step-layout">
       <div style={{ flex: 1 }}>
         <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
           Please provide some basic information so we can<br/>help you select an appropriate service package
@@ -169,7 +170,7 @@ function Step1Packages({ order, setOrder, onNext }) {
   )
 
   if (subStep === 2) return (
-    <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'center' }}>
+    <div className="step-layout step-layout-center">
       <div style={{ flex: 1 }}>
         <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
           Please provide some basic information so we can<br/>help you select an appropriate service package
@@ -191,14 +192,14 @@ function Step1Packages({ order, setOrder, onNext }) {
 
   // Packages grid
   return (
-    <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
+    <div className="content-container">
       <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, textAlign: 'center' }}>Select a service package</h2>
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Loading packages...</div>
       ) : packages.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>No packages found. Please go back and try again.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(packages.length, 3)}, 1fr)`, gap: 24 }}>
+        <div className="packages-grid" style={{ gridTemplateColumns: `repeat(${Math.min(packages.length, 3)}, 1fr)` }}>
           {packages.map(pkg => {
             const pkgId = getId(pkg)
             const isSelected = getId(order.selectedPackage) === pkgId
@@ -286,9 +287,9 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
   if (subStep === 1 && viewingCasket) {
     const img = productImage(viewingCasket, FALLBACK_CASKET)
     return (
-      <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
+      <div className="content-container">
         <button onClick={() => setViewingCasket(null)} style={{ background: 'none', border: 'none', color: '#2e2a2a', cursor: 'pointer', fontSize: 14, marginBottom: 24 }}>‹ BACK TO CASKETS</button>
-        <div style={{ display: 'flex', gap: 60, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: 40 }}>
+        <div className="casket-detail-layout">
           <div style={{ flex: 1 }}>
             <div style={{ borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
               <img src={img} alt={viewingCasket.name} style={{ width: '100%', height: 280, objectFit: 'cover', display: 'block' }} onError={e => { e.target.src = FALLBACK_CASKET }}/>
@@ -314,7 +315,7 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
 
   // Caskets grid
   if (subStep === 1) return (
-    <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
+    <div className="content-container">
       <h2 style={{ fontSize: 20, marginBottom: 8 }}>Select a casket by clicking an image below</h2>
       <p style={{ fontSize: 13, color: '#666', marginBottom: 32 }}>The law requires the body to be placed in a casket for dignified care, respect, and handling of the deceased.</p>
       {caskets === null ? (
@@ -322,7 +323,7 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
       ) : caskets.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#c00' }}>Could not load caskets. Make sure the backend is running.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+        <div className="product-grid-3">
           {caskets.map(c => {
             const cId = getId(c)
             const isSelected = getId(order.casket) === cId
@@ -369,14 +370,14 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
 
   // Vaults grid
   if (subStep === 2) return (
-    <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
+    <div className="content-container">
       <h2 style={{ fontSize: 20, marginBottom: 32 }}>Select a vault by clicking an image below</h2>
       {vaults === null ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Loading vaults...</div>
       ) : vaults.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#c00' }}>Could not load vaults. Make sure the backend is running.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+        <div className="product-grid-3">
           {vaults.map(v => {
             const vId = getId(v)
             const isSelected = getId(order.vault) === vId
@@ -417,7 +418,7 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
 
   // Keepsakes
   return (
-    <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
+    <div className="content-container">
       <h2 style={{ fontSize: 20, marginBottom: 8 }}>Select a keepsake or service item by clicking an image below</h2>
       <p style={{ fontSize: 13, color: '#666', marginBottom: 32 }}>You may select multiple items.</p>
       {keepsakes === null ? (
@@ -425,7 +426,7 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
       ) : keepsakes.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#c00' }}>Could not load keepsakes. Make sure the backend is running.</div>
       ) : null}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+      <div className="product-grid-3">
         {(keepsakes || []).map(k => {
           const kId = getId(k)
           const qty = order.keepsakes?.[kId] || 0
@@ -496,7 +497,7 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
     if (subStep === 1) return (
       <>
         <h3 style={{ fontSize: 17, marginBottom: 24 }}>What is the full legal name of your loved one?</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="name-grid">
           <Input label="First Name"  required value={form.deceasedFirst}  onChange={v => upd('deceasedFirst', v)}/>
           <Input label="Middle Name"          value={form.deceasedMiddle} onChange={v => upd('deceasedMiddle', v)}/>
           <Input label="Last Name"   required value={form.deceasedLast}   onChange={v => upd('deceasedLast', v)}/>
@@ -507,7 +508,7 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
     if (subStep === 2) return (
       <>
         <h3 style={{ fontSize: 17, marginBottom: 24 }}>What is your full legal name?</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="name-grid">
           <Input label="First Name"  required value={form.yourFirst}  onChange={v => upd('yourFirst', v)}/>
           <Input label="Middle Name"          value={form.yourMiddle} onChange={v => upd('yourMiddle', v)}/>
           <Input label="Last Name"   required value={form.yourLast}   onChange={v => upd('yourLast', v)}/>
@@ -546,7 +547,7 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
           </div>
           <Input label="Facility Name"   required value={form.facilityName}  onChange={v => upd('facilityName', v)}/>
           <Input label="Street Address"  required value={form.streetAddress} onChange={v => upd('streetAddress', v)}/>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+          <div className="city-state-zip-grid">
             <Input label="City" required value={form.city} onChange={v => upd('city', v)}/>
             <div>
               <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>State*</label>
@@ -567,7 +568,7 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'flex-start' }}>
+    <div className="step-layout">
       <div style={{ flex: 1 }}>
         <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
           Provide us with some basic information about<br/>you and your loved one
@@ -614,7 +615,7 @@ function Step4Services({ order, setOrder, onNext, onBack }) {
   if (!q) return <div style={{ padding: 60, textAlign: 'center', color: '#999' }}>Loading questions...</div>
 
   return (
-    <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'flex-start' }}>
+    <div className="step-layout">
       <div style={{ flex: 1 }}>
         <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
           Please answer a few remaining questions to<br/>determine if you need any additional services
@@ -793,11 +794,11 @@ function Step5Completion({ order, setStep, onBack }) {
   )
 
   return (
-    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '0 24px 40px' }}>
+    <div style={{ maxWidth: 1060, margin: '0 auto', padding: 'clamp(0px, 2vw, 24px) clamp(12px, 3vw, 24px) 40px' }}>
       <div style={{ textAlign: 'center', padding: '14px 0 4px', fontSize: 13, color: '#555' }}>420 East Saint Patrick Street, Suite 106, Rapid City, SD 57701</div>
       <div style={{ textAlign: 'right', fontSize: 13, color: '#555', marginBottom: 20 }}>Need help? Call us at <strong>605-787-3940</strong></div>
 
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+      <div className="completion-layout">
 
         {/* ── LEFT: Statement ── */}
         <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 6, padding: '24px 28px' }}>
@@ -912,7 +913,7 @@ function Step5Completion({ order, setStep, onBack }) {
         </div>
 
         {/* ── RIGHT: Payment ── */}
-        <div style={{ width: 470, flexShrink: 0, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 6, padding: '24px 28px' }}>
+        <div className="payment-panel">
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: '#1a1a1a' }}>Payment</h3>
 
           <div style={{ display: 'flex', marginBottom: 16, border: '1px solid #e0e0e0', borderRadius: 4, overflow: 'hidden' }}>
