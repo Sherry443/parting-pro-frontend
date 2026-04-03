@@ -11,7 +11,7 @@ function Thumb({ url }) {
       src={url}
       alt=""
       style={{ width: 44, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid #e5e7eb' }}
-      onError={(e) => { e.currentTarget.style.display = 'none' }}
+      onError={(e) => { e.currentTarget.src = 'https://placehold.co/44x32/f3f4f6/9ca3af?text=?' }}
     />
   )
 }

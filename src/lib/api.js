@@ -1,7 +1,10 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'https://parting-pro-backend.onrender.com';
+const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+// Unwrap { success, data } response — backend ne format change kiya hai
+const unwrap = (json) => json?.data !== undefined ? json.data : json;
 
 export const api = {
-  get: (path) => fetch(`${BASE}${path}`).then(r => r.json()),
+  get: (path) => fetch(`${BASE}${path}`).then(r => r.json()).then(unwrap),
   post: (path, body) => fetch(`${BASE}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
   put: (path, body) => fetch(`${BASE}${path}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
   del: (path) => fetch(`${BASE}${path}`, { method: 'DELETE' }).then(r => r.json()),

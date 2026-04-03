@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 
-
 const STEPS = ['1. Packages', '2. Memorial Goods', '3. Details', '4. Services', '5. Completion']
 
 const RELATIONSHIPS = [
@@ -20,20 +19,21 @@ const FLOWER_IMAGES = {
   yellow: 'https://images.unsplash.com/photo-1504567961542-e24d9439a724?w=500&q=80',
 }
 
-// Images are now controlled from Admin (Cloudinary URLs stored in DB).
-// These are only fallbacks if a product has no image.
-const FALLBACK_CASKET = 'https://placehold.co/400x220/e8ddd0/7a5c3a?text=Casket'
-const FALLBACK_VAULT = 'https://placehold.co/400x220/b87333/ffffff?text=Vault'
+const FALLBACK_CASKET   = 'https://placehold.co/400x220/e8ddd0/7a5c3a?text=Casket'
+const FALLBACK_VAULT    = 'https://placehold.co/400x220/b87333/ffffff?text=Vault'
 const FALLBACK_KEEPSAKE = 'https://placehold.co/300x160/2c4a5a/ffffff?text=Keepsake'
+
+// ─── HELPERS ────────────────────────────────────────────────────────────
+// MongoDB returns _id, not id — always use this to get the real ID
+const getId = (item) => item?._id || item?.id || ''
 
 function productImage(item, fallback) {
   const url = item?.image
-  // Only accept absolute URLs (Cloudinary etc). Old seeded values like "/caskets/oak.jpg"
-  // don't exist on the Next frontend, so treat them as missing.
   if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url
   return fallback
 }
 
+// ─── SHARED UI COMPONENTS ───────────────────────────────────────────────
 function StepBar({ current, onNavigate }) {
   return (
     <div style={{ borderBottom: '1px solid #e0e0e0', background: '#fff' }}>
@@ -52,15 +52,11 @@ function StepBar({ current, onNavigate }) {
               key={i}
               onClick={() => onNavigate(i)}
               style={{
-                flex: 1,
-                textAlign: 'center',
-                padding: '20px 8px',
-                fontSize: 12,
+                flex: 1, textAlign: 'center', padding: '20px 8px', fontSize: 12,
                 fontWeight: i === current ? 600 : 400,
                 color: i === current ? '#233037' : '#2e2a2a',
                 borderBottom: i === current ? '3px solid #2e2a2a' : '3px solid transparent',
-                cursor: 'pointer',
-                userSelect: 'none',
+                cursor: 'pointer', userSelect: 'none',
               }}
             >
               {s}
@@ -89,7 +85,12 @@ function FlowerImage({ variant = 'purple' }) {
 function RadioCard({ checked, onChange, children }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', cursor: 'pointer' }}>
-      <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${checked ? '#2e2a2a' : '#ccc'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: checked ? '#2e2a2a' : '#fff', transition: 'all .2s' }}>
+      <div style={{
+        width: 22, height: 22, borderRadius: '50%',
+        border: `2px solid ${checked ? '#2e2a2a' : '#ccc'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, background: checked ? '#2e2a2a' : '#fff', transition: 'all .2s'
+      }}>
         {checked && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }}/>}
       </div>
       <input type="radio" checked={checked} onChange={onChange} style={{ display: 'none' }}/>
@@ -100,7 +101,11 @@ function RadioCard({ checked, onChange, children }) {
 
 function Btn({ onClick, children, style = {} }) {
   return (
-    <button onClick={onClick} style={{ padding: '7px 20px', background: '#2d3f50', color: '#fff', border: '2px solid #2e2a2a', borderRadius: 4, fontSize: 12, fontWeight: 600, letterSpacing: 1, cursor: 'pointer', ...style }}>
+    <button onClick={onClick} style={{
+      padding: '7px 20px', background: '#2d3f50', color: '#fff',
+      border: '2px solid #2e2a2a', borderRadius: 4, fontSize: 12,
+      fontWeight: 600, letterSpacing: 1, cursor: 'pointer', ...style
+    }}>
       {children}
     </button>
   )
@@ -108,7 +113,9 @@ function Btn({ onClick, children, style = {} }) {
 
 function BackBtn({ onClick }) {
   return (
-    <button onClick={onClick} style={{ background: 'none', border: 'none', color: '#2e2a2a', cursor: 'pointer', fontSize: 14 }}>‹ BACK</button>
+    <button onClick={onClick} style={{ background: 'none', border: 'none', color: '#2e2a2a', cursor: 'pointer', fontSize: 14 }}>
+      ‹ BACK
+    </button>
   )
 }
 
@@ -116,8 +123,10 @@ function Input({ label, value, onChange, required, placeholder }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <label style={{ fontSize: 13, fontWeight: 600, color: '#555' }}>{label}{required && '*'}</label>
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{ padding: '10px 12px', border: '1px solid #ccc', borderRadius: 4, fontSize: 14, outline: 'none' }}/>
+      <input
+        value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ padding: '10px 12px', border: '1px solid #ccc', borderRadius: 4, fontSize: 14, outline: 'none' }}
+      />
     </div>
   )
 }
@@ -130,15 +139,22 @@ function Step1Packages({ order, setOrder, onNext }) {
 
   const loadPackages = async (category) => {
     setLoading(true)
-    try { const data = await api.get(`/api/packages?category=${category}`); setPackages(data) }
-    catch { setPackages([]) }
+    try {
+      const data = await api.get(`/api/packages?category=${category}`)
+      // Ensure array — safety net
+      setPackages(Array.isArray(data) ? data : [])
+    } catch {
+      setPackages([])
+    }
     setLoading(false)
   }
 
   if (subStep === 1) return (
     <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'flex-start' }}>
       <div style={{ flex: 1 }}>
-        <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>Please provide some basic information so we can<br/>help you select an appropriate service package</h2>
+        <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
+          Please provide some basic information so we can<br/>help you select an appropriate service package
+        </h2>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: 32, maxWidth: 560 }}>
           <h3 style={{ fontSize: 16, marginBottom: 20 }}>When will you require services?</h3>
           <RadioCard checked={order.timing === 'immediately'} onChange={() => setOrder(o => ({...o, timing: 'immediately'}))}>Immediately, my loved one has passed</RadioCard>
@@ -156,14 +172,15 @@ function Step1Packages({ order, setOrder, onNext }) {
     <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'center' }}>
       <div style={{ flex: 1 }}>
         <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
-          Please provide some basic information so we can<br/>
-          help you select an appropriate service package
+          Please provide some basic information so we can<br/>help you select an appropriate service package
         </h2>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: 32, maxWidth: 560 }}>
           <h3 style={{ fontSize: 16, marginBottom: 20 }}>Which type of service would you like?</h3>
           <RadioCard checked={order.serviceType === 'cremation'} onChange={() => setOrder(o => ({...o, serviceType: 'cremation'}))}>Cremation</RadioCard>
           <RadioCard checked={order.serviceType === 'burial'} onChange={() => setOrder(o => ({...o, serviceType: 'burial'}))}>Burial</RadioCard>
-          <div style={{ marginTop: 24 }}><Btn onClick={() => { if (!order.serviceType) return; loadPackages(order.serviceType); setSubStep(3) }}>CONTINUE</Btn></div>
+          <div style={{ marginTop: 24 }}>
+            <Btn onClick={() => { if (!order.serviceType) return; loadPackages(order.serviceType); setSubStep(3) }}>CONTINUE</Btn>
+          </div>
           <div style={{ marginTop: 16, textAlign: 'right', color: '#999', fontSize: 13 }}>Step 2 of 2</div>
         </div>
         <div style={{ marginTop: 16 }}><BackBtn onClick={() => setSubStep(1)}/></div>
@@ -172,67 +189,71 @@ function Step1Packages({ order, setOrder, onNext }) {
     </div>
   )
 
+  // Packages grid
   return (
     <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
       <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, textAlign: 'center' }}>Select a service package</h2>
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Loading packages...</div>
+      ) : packages.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>No packages found. Please go back and try again.</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(packages.length, 3)}, 1fr)`, gap: 24 }}>
-          {packages.map(pkg => (
-            <div
-              key={pkg.id}
-              onClick={() => setOrder(o => ({ ...o, selectedPackage: pkg }))}
-              style={{
-                border: order.selectedPackage?.id === pkg.id ? '3px solid #2e2a2a' : '1px solid #e5e7eb',
-                borderRadius: 4,
-                padding: order.selectedPackage?.id === pkg.id ? 26 : 28,
-                background: '#fff',
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'all .2s',
-              }}
-            >
-              {order.selectedPackage?.id === pkg.id && (
-                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', width: 26, height: 26, background: '#2e2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>✓</div>
-              )}
-              <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1, color: '#333', marginBottom: 8 }}>{pkg.name.toUpperCase()}</h3>
-              <div style={{ fontSize: 13, color: '#777', marginBottom: 4 }}>starting at</div>
-              <div style={{ fontSize: 30, fontWeight: 700, color: '#333', marginBottom: 16 }}>${pkg.price.toLocaleString()}</div>
-              {pkg.description && <p style={{ fontSize: 13, color: '#555', fontStyle: 'italic', marginBottom: 20, lineHeight: 1.6, borderBottom: '1px solid #eee', paddingBottom: 16 }}>{pkg.description}</p>}
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 12 }}>This package includes:</div>
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                {pkg.includes?.map((item, i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#444', marginBottom: 8 }}>
-                    <span style={{ color: '#2e2a2a' }}>✓</span> {item}
-                  </li>
-                ))}
-              </ul>
-              <div style={{ marginTop: 24 }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setOrder(o => ({ ...o, selectedPackage: pkg }))
-                    onNext()
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    background: '#2e2a2a',
-                    color: '#fff',
-                    border: '2px solid #2e2a2a',
-                    borderRadius: 4,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    letterSpacing: 1,
-                    cursor: 'pointer',
-                  }}
-                >
-                  SELECT
-                </button>
+          {packages.map(pkg => {
+            const pkgId = getId(pkg)
+            const isSelected = getId(order.selectedPackage) === pkgId
+            return (
+              <div
+                key={pkgId}
+                onClick={() => setOrder(o => ({ ...o, selectedPackage: pkg }))}
+                style={{
+                  border: isSelected ? '3px solid #2e2a2a' : '1px solid #e5e7eb',
+                  borderRadius: 4,
+                  padding: isSelected ? 26 : 28,
+                  background: '#fff',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'all .2s',
+                }}
+              >
+                {isSelected && (
+                  <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', width: 26, height: 26, background: '#2e2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>✓</div>
+                )}
+                {productImage(pkg, null) && (
+                  <div style={{ margin: '-28px -28px 20px -28px', overflow: 'hidden', borderRadius: '4px 4px 0 0' }}>
+                    <img
+                      src={productImage(pkg, null)}
+                      alt={pkg.name}
+                      style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                      onError={e => { e.currentTarget.parentElement.style.display = 'none' }}
+                    />
+                  </div>
+                )}
+                <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1, color: '#333', marginBottom: 8 }}>{pkg.name.toUpperCase()}</h3>
+                <div style={{ fontSize: 13, color: '#777', marginBottom: 4 }}>starting at</div>
+                <div style={{ fontSize: 30, fontWeight: 700, color: '#333', marginBottom: 16 }}>${pkg.price.toLocaleString()}</div>
+                {pkg.description && (
+                  <p style={{ fontSize: 13, color: '#555', fontStyle: 'italic', marginBottom: 20, lineHeight: 1.6, borderBottom: '1px solid #eee', paddingBottom: 16 }}>{pkg.description}</p>
+                )}
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 12 }}>This package includes:</div>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                  {pkg.includes?.map((item, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#444', marginBottom: 8 }}>
+                      <span style={{ color: '#2e2a2a' }}>✓</span> {item}
+                    </li>
+                  ))}
+                </ul>
+                <div style={{ marginTop: 24 }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); setOrder(o => ({ ...o, selectedPackage: pkg })); onNext() }}
+                    style={{ width: '100%', padding: '12px', background: '#2e2a2a', color: '#fff', border: '2px solid #2e2a2a', borderRadius: 4, fontSize: 13, fontWeight: 700, letterSpacing: 1, cursor: 'pointer' }}
+                  >
+                    SELECT
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
@@ -244,36 +265,25 @@ function Step1Packages({ order, setOrder, onNext }) {
 }
 
 // ─── STEP 2: MEMORIAL GOODS ─────────────────────────────────────────────
-// FIX: Single selection enforced for caskets and vaults (only one can be active at a time)
 function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
   const [subStep, setSubStep] = useState(1)
-  const [caskets, setCaskets] = useState([])
-  const [vaults, setVaults] = useState([])
-  const [keepsakes, setKeepsakes] = useState([])
+  const [caskets, setCaskets] = useState(null)
+  const [vaults, setVaults] = useState(null)
+  const [keepsakes, setKeepsakes] = useState(null)
   const [viewingCasket, setViewingCasket] = useState(null)
 
   useEffect(() => {
-    api.get('/api/caskets').then(setCaskets)
-    api.get('/api/vaults').then(setVaults)
-    api.get('/api/keepsakes').then(setKeepsakes)
+    api.get('/api/caskets').then(d => setCaskets(Array.isArray(d) ? d : [])).catch(() => setCaskets([]))
+    api.get('/api/vaults').then(d => setVaults(Array.isArray(d) ? d : [])).catch(() => setVaults([]))
+    api.get('/api/keepsakes').then(d => setKeepsakes(Array.isArray(d) ? d : [])).catch(() => setKeepsakes([]))
   }, [])
 
-  // FIX: keepsake qty setter
   const setQty = (id, qty) => setOrder(o => ({ ...o, keepsakes: { ...(o.keepsakes || {}), [id]: qty } }))
-
-  // FIX: Single casket select — replaces any previous selection
-  const selectCasket = (casket) => {
-    setOrder(o => ({ ...o, casket }))
-  }
-
-  // FIX: Single vault select — replaces any previous selection
-  const selectVault = (vault) => {
-    setOrder(o => ({ ...o, vault }))
-  }
+  const selectCasket = (casket) => setOrder(o => ({ ...o, casket }))
+  const selectVault  = (vault)  => setOrder(o => ({ ...o, vault }))
 
   // Casket detail view
   if (subStep === 1 && viewingCasket) {
-    const idx = caskets.findIndex(c => (c._id || c.id) === (viewingCasket._id || viewingCasket.id))
     const img = productImage(viewingCasket, FALLBACK_CASKET)
     return (
       <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
@@ -281,12 +291,7 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
         <div style={{ display: 'flex', gap: 60, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: 40 }}>
           <div style={{ flex: 1 }}>
             <div style={{ borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
-              <img
-                src={img}
-                alt={viewingCasket.name}
-                style={{ width: '100%', height: 280, objectFit: 'cover', display: 'block' }}
-                onError={e => { e.target.src = FALLBACK_CASKET }}
-              />
+              <img src={img} alt={viewingCasket.name} style={{ width: '100%', height: 280, objectFit: 'cover', display: 'block' }} onError={e => { e.target.src = FALLBACK_CASKET }}/>
             </div>
             <div style={{ border: '2px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', width: 90, height: 60 }}>
               <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
@@ -295,16 +300,7 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
           <div style={{ flex: 1 }}>
             <h2 style={{ fontSize: 26, marginBottom: 12 }}>{viewingCasket.name}</h2>
             <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 24 }}>${viewingCasket.price.toLocaleString()}</div>
-            <Btn
-              onClick={() => {
-                // FIX: select single casket and advance
-                selectCasket(viewingCasket)
-                setViewingCasket(null)
-                setSubStep(2)
-              }}
-            >
-              SELECT
-            </Btn>
+            <Btn onClick={() => { selectCasket(viewingCasket); setViewingCasket(null); setSubStep(2) }}>SELECT</Btn>
             <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {viewingCasket.material && <div style={{ fontSize: 14, color: '#555' }}>Material: {viewingCasket.material}</div>}
               {viewingCasket.interior && <div style={{ fontSize: 14, color: '#555' }}>{viewingCasket.interior} Interior</div>}
@@ -316,81 +312,54 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
     )
   }
 
-  // Caskets grid — FIX: clicking card selects ONLY that casket (no multi-select)
+  // Caskets grid
   if (subStep === 1) return (
     <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
       <h2 style={{ fontSize: 20, marginBottom: 8 }}>Select a casket by clicking an image below</h2>
       <p style={{ fontSize: 13, color: '#666', marginBottom: 32 }}>The law requires the body to be placed in a casket for dignified care, respect, and handling of the deceased.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
-        {caskets.map((c, idx) => {
-          const isSelected = (order.casket?._id || order.casket?.id) === (c._id || c.id)
-          return (
-            <div
-              key={c.id}
-              style={{
-                border: isSelected ? '3px solid #2e2a2a' : '1px solid #e5e7eb',
-                padding: isSelected ? 14 : 16,
-                background: '#fff',
-                transition: 'border 0.15s, padding 0.15s',
-                position: 'relative',
-              }}
-            >
-              {isSelected && (
-                <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, background: '#2e2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, zIndex: 1 }}>✓</div>
-              )}
-              <div
-                style={{ marginBottom: 12, overflow: 'hidden', borderRadius: 4, cursor: 'pointer' }}
-                onClick={() => setViewingCasket(c)}
-              >
-                <img
-                  src={productImage(c, FALLBACK_CASKET)}
-                  alt={c.name}
-                  style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
-                  onError={e => { e.target.src = FALLBACK_CASKET }}
-                />
+      {caskets === null ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Loading caskets...</div>
+      ) : caskets.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#c00' }}>Could not load caskets. Make sure the backend is running.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+          {caskets.map(c => {
+            const cId = getId(c)
+            const isSelected = getId(order.casket) === cId
+            return (
+              <div key={cId} style={{ border: isSelected ? '3px solid #2e2a2a' : '1px solid #e5e7eb', padding: isSelected ? 14 : 16, background: '#fff', transition: 'border 0.15s, padding 0.15s', position: 'relative' }}>
+                {isSelected && (
+                  <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, background: '#2e2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, zIndex: 1 }}>✓</div>
+                )}
+                <div style={{ marginBottom: 12, overflow: 'hidden', borderRadius: 4, cursor: 'pointer' }} onClick={() => setViewingCasket(c)}>
+                  <img
+                    src={productImage(c, FALLBACK_CASKET)}
+                    alt={c.name}
+                    style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                    onError={e => { e.target.src = FALLBACK_CASKET }}
+                  />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{c.name}</div>
+                  <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>${c.price.toLocaleString()}</div>
+                  <button
+                    onClick={() => { selectCasket(c); setSubStep(2) }}
+                    style={{ padding: '6px 16px', background: isSelected ? '#2e2a2a' : '#fff', color: isSelected ? '#fff' : '#2e2a2a', border: '2px solid #2e2a2a', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginRight: 6 }}
+                  >
+                    {isSelected ? '✓ Selected' : 'Select'}
+                  </button>
+                  <button
+                    onClick={() => setViewingCasket(c)}
+                    style={{ padding: '6px 12px', background: '#f5f5f5', color: '#555', border: '1px solid #ccc', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}
+                  >
+                    View
+                  </button>
+                </div>
               </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{c.name}</div>
-                <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>${c.price.toLocaleString()}</div>
-                {/* FIX: SELECT button on grid directly selects and advances */}
-                <button
-                  onClick={() => {
-                    selectCasket(c)
-                    setSubStep(2)
-                  }}
-                  style={{
-                    padding: '6px 16px',
-                    background: isSelected ? '#2e2a2a' : '#fff',
-                    color: isSelected ? '#fff' : '#2e2a2a',
-                    border: '2px solid #2e2a2a',
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    marginRight: 6,
-                  }}
-                >
-                  {isSelected ? '✓ Selected' : 'Select'}
-                </button>
-                <button
-                  onClick={() => setViewingCasket(c)}
-                  style={{
-                    padding: '6px 12px',
-                    background: '#f5f5f5',
-                    color: '#555',
-                    border: '1px solid #ccc',
-                    borderRadius: 4,
-                    fontSize: 12,
-                    cursor: 'pointer',
-                  }}
-                >
-                  View
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
         <BackBtn onClick={onBack}/>
         {order.casket && <Btn onClick={() => setSubStep(2)}>CONTINUE</Btn>}
@@ -398,66 +367,47 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
     </div>
   )
 
-  // Vaults grid — FIX: single selection, clicking SELECT replaces previous vault
+  // Vaults grid
   if (subStep === 2) return (
     <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
       <h2 style={{ fontSize: 20, marginBottom: 32 }}>Select a vault by clicking an image below</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
-        {vaults.map((v, idx) => {
-          const isSelected = (order.vault?._id || order.vault?.id) === (v._id || v.id)
-          return (
-            <div
-              key={v.id}
-              style={{
-                border: isSelected ? '3px solid #2e2a2a' : '1px solid #e5e7eb',
-                padding: isSelected ? 14 : 16,
-                background: '#fff',
-                transition: 'border 0.15s, padding 0.15s',
-                position: 'relative',
-              }}
-            >
-              {isSelected && (
-                <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, background: '#2e2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, zIndex: 1 }}>✓</div>
-              )}
-              <div
-                style={{ marginBottom: 12, overflow: 'hidden', borderRadius: 4, cursor: 'pointer' }}
-                onClick={() => selectVault(v)}
-              >
-                <img
-                  src={productImage(v, FALLBACK_VAULT)}
-                  alt={v.name}
-                  style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
-                  onError={e => { e.target.src = FALLBACK_VAULT }}
-                />
+      {vaults === null ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Loading vaults...</div>
+      ) : vaults.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#c00' }}>Could not load vaults. Make sure the backend is running.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+          {vaults.map(v => {
+            const vId = getId(v)
+            const isSelected = getId(order.vault) === vId
+            return (
+              <div key={vId} style={{ border: isSelected ? '3px solid #2e2a2a' : '1px solid #e5e7eb', padding: isSelected ? 14 : 16, background: '#fff', transition: 'border 0.15s, padding 0.15s', position: 'relative' }}>
+                {isSelected && (
+                  <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, background: '#2e2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, zIndex: 1 }}>✓</div>
+                )}
+                <div style={{ marginBottom: 12, overflow: 'hidden', borderRadius: 4, cursor: 'pointer' }} onClick={() => selectVault(v)}>
+                  <img
+                    src={productImage(v, FALLBACK_VAULT)}
+                    alt={v.name}
+                    style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                    onError={e => { e.target.src = FALLBACK_VAULT }}
+                  />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{v.name}</div>
+                  <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>${v.price.toLocaleString()}</div>
+                  <button
+                    onClick={() => { selectVault(v); setSubStep(3) }}
+                    style={{ marginTop: 4, padding: '8px 12px', background: '#2e2a2a', color: '#fff', border: '2px solid #2e2a2a', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {isSelected ? '✓ Selected' : 'SELECT'}
+                  </button>
+                </div>
               </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{v.name}</div>
-                <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>${v.price.toLocaleString()}</div>
-                {/* FIX: SELECT advances and replaces previous vault selection */}
-                <button
-                  onClick={() => {
-                    selectVault(v)
-                    setSubStep(3)
-                  }}
-                  style={{
-                    marginTop: 4,
-                    padding: '8px 12px',
-                    background: isSelected ? '#2e2a2a' : '#2e2a2a',
-                    color: '#fff',
-                    border: '2px solid #2e2a2a',
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {isSelected ? '✓ Selected' : 'SELECT'}
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
         <BackBtn onClick={() => setSubStep(1)}/>
         {order.vault && <Btn onClick={() => setSubStep(3)}>CONTINUE</Btn>}
@@ -465,17 +415,23 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
     </div>
   )
 
-  // Keepsakes — multi-select with qty is intentional, this is correct
+  // Keepsakes
   return (
     <div style={{ maxWidth: 1100, margin: '40px auto', padding: '0 32px' }}>
       <h2 style={{ fontSize: 20, marginBottom: 8 }}>Select a keepsake or service item by clicking an image below</h2>
       <p style={{ fontSize: 13, color: '#666', marginBottom: 32 }}>You may select multiple items.</p>
+      {keepsakes === null ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Loading keepsakes...</div>
+      ) : keepsakes.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#c00' }}>Could not load keepsakes. Make sure the backend is running.</div>
+      ) : null}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
-        {keepsakes.map((k, idx) => {
-          const qty = order.keepsakes?.[k.id] || 0
+        {(keepsakes || []).map(k => {
+          const kId = getId(k)
+          const qty = order.keepsakes?.[kId] || 0
           return (
-            <div key={k.id} style={{ border: qty > 0 ? '3px solid #2e2a2a' : '1px solid #e5e7eb', padding: qty > 0 ? 14 : 16, background: '#fff', transition: 'border 0.15s, padding 0.15s' }}>
-              <div style={{ marginBottom: 12, overflow: 'hidden', borderRadius: 4, cursor: 'pointer' }} onClick={() => setQty(k.id, qty > 0 ? 0 : 1)}>
+            <div key={kId} style={{ border: qty > 0 ? '3px solid #2e2a2a' : '1px solid #e5e7eb', padding: qty > 0 ? 14 : 16, background: '#fff', transition: 'border 0.15s, padding 0.15s' }}>
+              <div style={{ marginBottom: 12, overflow: 'hidden', borderRadius: 4, cursor: 'pointer' }} onClick={() => setQty(kId, qty > 0 ? 0 : 1)}>
                 <img
                   src={productImage(k, FALLBACK_KEEPSAKE)}
                   alt={k.name}
@@ -488,16 +444,18 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
                 <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>${k.price}</div>
                 <div style={{ fontSize: 13, color: '#888' }}>Quantity: {qty}</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 8 }}>
-                  <button onClick={() => setQty(k.id, Math.max(0, qty - 1))} style={{ width: 28, height: 28, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', fontSize: 16, background: '#fff' }}>−</button>
+                  <button onClick={() => setQty(kId, Math.max(0, qty - 1))} style={{ width: 28, height: 28, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', fontSize: 16, background: '#fff' }}>−</button>
                   <span>{qty}</span>
-                  <button onClick={() => setQty(k.id, qty + 1)} style={{ width: 28, height: 28, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', fontSize: 16, background: '#fff' }}>+</button>
+                  <button onClick={() => setQty(kId, qty + 1)} style={{ width: 28, height: 28, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', fontSize: 16, background: '#fff' }}>+</button>
                 </div>
               </div>
             </div>
           )
         })}
       </div>
-      <p style={{ fontSize: 13, color: '#666', marginTop: 24, background: '#f8f9fa', padding: 16, borderRadius: 4 }}>This is a curated selection of our most popular options. We have many more to choose from and you can upgrade at anytime after payment.</p>
+      <p style={{ fontSize: 13, color: '#666', marginTop: 24, background: '#f8f9fa', padding: 16, borderRadius: 4 }}>
+        This is a curated selection of our most popular options. We have many more to choose from and you can upgrade at anytime after payment.
+      </p>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
         <BackBtn onClick={() => setSubStep(2)}/>
         <Btn onClick={onNext}>CONTINUE</Btn>
@@ -510,22 +468,22 @@ function Step2MemorialGoods({ order, setOrder, onNext, onBack }) {
 function Step3Details({ order, setOrder, onNext, onBack }) {
   const [subStep, setSubStep] = useState(1)
   const [form, setForm] = useState({
-    deceasedFirst: order.details?.deceasedFirst || '',
+    deceasedFirst:  order.details?.deceasedFirst  || '',
     deceasedMiddle: order.details?.deceasedMiddle || '',
-    deceasedLast: order.details?.deceasedLast || '',
+    deceasedLast:   order.details?.deceasedLast   || '',
     deceasedSuffix: order.details?.deceasedSuffix || '',
-    yourFirst: order.details?.yourFirst || '',
-    yourMiddle: order.details?.yourMiddle || '',
-    yourLast: order.details?.yourLast || '',
-    yourSuffix: order.details?.yourSuffix || '',
-    relationship: order.details?.relationship || '',
-    inCare: order.details?.inCare || '',
-    locationType: order.details?.locationType || 'Home',
-    facilityName: order.details?.facilityName || '',
-    streetAddress: order.details?.streetAddress || '',
-    city: order.details?.city || '',
-    state: order.details?.state || 'SD',
-    zip: order.details?.zip || ''
+    yourFirst:      order.details?.yourFirst      || '',
+    yourMiddle:     order.details?.yourMiddle     || '',
+    yourLast:       order.details?.yourLast       || '',
+    yourSuffix:     order.details?.yourSuffix     || '',
+    relationship:   order.details?.relationship   || '',
+    inCare:         order.details?.inCare         || '',
+    locationType:   order.details?.locationType   || 'Home',
+    facilityName:   order.details?.facilityName   || '',
+    streetAddress:  order.details?.streetAddress  || '',
+    city:           order.details?.city           || '',
+    state:          order.details?.state          || 'SD',
+    zip:            order.details?.zip            || '',
   })
   const upd = (k, v) => setForm(f => ({...f, [k]: v}))
 
@@ -539,10 +497,10 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
       <>
         <h3 style={{ fontSize: 17, marginBottom: 24 }}>What is the full legal name of your loved one?</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <Input label="First Name" required value={form.deceasedFirst} onChange={v => upd('deceasedFirst', v)}/>
-          <Input label="Middle Name" value={form.deceasedMiddle} onChange={v => upd('deceasedMiddle', v)}/>
-          <Input label="Last Name" required value={form.deceasedLast} onChange={v => upd('deceasedLast', v)}/>
-          <Input label="Suffix" value={form.deceasedSuffix} onChange={v => upd('deceasedSuffix', v)}/>
+          <Input label="First Name"  required value={form.deceasedFirst}  onChange={v => upd('deceasedFirst', v)}/>
+          <Input label="Middle Name"          value={form.deceasedMiddle} onChange={v => upd('deceasedMiddle', v)}/>
+          <Input label="Last Name"   required value={form.deceasedLast}   onChange={v => upd('deceasedLast', v)}/>
+          <Input label="Suffix"               value={form.deceasedSuffix} onChange={v => upd('deceasedSuffix', v)}/>
         </div>
       </>
     )
@@ -550,10 +508,10 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
       <>
         <h3 style={{ fontSize: 17, marginBottom: 24 }}>What is your full legal name?</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <Input label="First Name" required value={form.yourFirst} onChange={v => upd('yourFirst', v)}/>
-          <Input label="Middle Name" value={form.yourMiddle} onChange={v => upd('yourMiddle', v)}/>
-          <Input label="Last Name" required value={form.yourLast} onChange={v => upd('yourLast', v)}/>
-          <Input label="Suffix" value={form.yourSuffix} onChange={v => upd('yourSuffix', v)}/>
+          <Input label="First Name"  required value={form.yourFirst}  onChange={v => upd('yourFirst', v)}/>
+          <Input label="Middle Name"          value={form.yourMiddle} onChange={v => upd('yourMiddle', v)}/>
+          <Input label="Last Name"   required value={form.yourLast}   onChange={v => upd('yourLast', v)}/>
+          <Input label="Suffix"               value={form.yourSuffix} onChange={v => upd('yourSuffix', v)}/>
         </div>
       </>
     )
@@ -571,7 +529,7 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
       <>
         <h3 style={{ fontSize: 17, marginBottom: 12 }}>Is your loved one currently in our care?</h3>
         <p style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>This information will help us determine if we need to arrange transportation of your loved one.</p>
-        <RadioCard checked={form.inCare === 'no'} onChange={() => upd('inCare', 'no')}>No, my loved one needs to be taken into your care</RadioCard>
+        <RadioCard checked={form.inCare === 'no'}  onChange={() => upd('inCare', 'no')}>No, my loved one needs to be taken into your care</RadioCard>
         <RadioCard checked={form.inCare === 'yes'} onChange={() => upd('inCare', 'yes')}>Yes, my loved one is currently in your care</RadioCard>
       </>
     )
@@ -581,17 +539,19 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Location Type*</label>
-            <select value={form.locationType} onChange={e => upd('locationType', e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: 4, fontSize: 14, background: '#fff' }}>
+            <select value={form.locationType} onChange={e => upd('locationType', e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: 4, fontSize: 14, background: '#fff' }}>
               {LOCATION_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
-          <Input label="Facility Name" required value={form.facilityName} onChange={v => upd('facilityName', v)}/>
-          <Input label="Street Address" required value={form.streetAddress} onChange={v => upd('streetAddress', v)}/>
+          <Input label="Facility Name"   required value={form.facilityName}  onChange={v => upd('facilityName', v)}/>
+          <Input label="Street Address"  required value={form.streetAddress} onChange={v => upd('streetAddress', v)}/>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
             <Input label="City" required value={form.city} onChange={v => upd('city', v)}/>
             <div>
               <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>State*</label>
-              <select value={form.state} onChange={e => upd('state', e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: 4, fontSize: 14, background: '#fff' }}>
+              <select value={form.state} onChange={e => upd('state', e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #ccc', borderRadius: 4, fontSize: 14, background: '#fff' }}>
                 {['SD','ND','NE','WY','MT','MN','IA','CO'].map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
@@ -609,7 +569,9 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
   return (
     <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'flex-start' }}>
       <div style={{ flex: 1 }}>
-        <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>Provide us with some basic information about<br/>you and your loved one</h2>
+        <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
+          Provide us with some basic information about<br/>you and your loved one
+        </h2>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 32, maxWidth: 560 }}>
           {content()}
           <div style={{ marginTop: 24 }}><Btn onClick={handleNext}>CONTINUE</Btn></div>
@@ -628,13 +590,14 @@ function Step3Details({ order, setOrder, onNext, onBack }) {
 function Step4Services({ order, setOrder, onNext, onBack }) {
   const [subStep, setSubStep] = useState(1)
   const [questions, setQuestions] = useState([])
-  // FIX: pre-populate answers from existing order.services so edits are preserved
   const [answers, setAnswers] = useState(order.services || {})
 
-  useEffect(() => { api.get('/api/questions').then(setQuestions) }, [])
+  useEffect(() => {
+    api.get('/api/questions').then(d => setQuestions(Array.isArray(d) ? d : []))
+  }, [])
 
   const serviceQuestions = questions.filter(q => q.step === 'services').sort((a, b) => a.order - b.order)
-  const q = serviceQuestions[subStep - 1]
+  const q     = serviceQuestions[subStep - 1]
   const total = serviceQuestions.length
 
   const handleNext = () => {
@@ -642,35 +605,49 @@ function Step4Services({ order, setOrder, onNext, onBack }) {
     else { setOrder(o => ({...o, services: answers, serviceQuestions})); onNext() }
   }
 
-  if (!q && total === 0) return <div style={{ padding: 60, textAlign: 'center', color: '#999' }}>No service questions configured. <Btn onClick={() => { setOrder(o => ({...o, services: {}, serviceQuestions: []})); onNext() }}>CONTINUE</Btn></div>
+  if (!q && total === 0) return (
+    <div style={{ padding: 60, textAlign: 'center', color: '#999' }}>
+      No service questions configured.{' '}
+      <Btn onClick={() => { setOrder(o => ({...o, services: {}, serviceQuestions: []})); onNext() }}>CONTINUE</Btn>
+    </div>
+  )
   if (!q) return <div style={{ padding: 60, textAlign: 'center', color: '#999' }}>Loading questions...</div>
 
   return (
     <div style={{ display: 'flex', gap: 60, maxWidth: 1100, margin: '40px auto', padding: '0 32px', alignItems: 'flex-start' }}>
       <div style={{ flex: 1 }}>
-        <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>Please answer a few remaining questions to<br/>determine if you need any additional services</h2>
+        <h2 style={{ fontSize: 16, color: '#2e2a2a', marginBottom: 32, lineHeight: 1.4 }}>
+          Please answer a few remaining questions to<br/>determine if you need any additional services
+        </h2>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 32, maxWidth: 560 }}>
           <h3 style={{ fontSize: 17, marginBottom: 8 }}>{q.question}</h3>
           {q.description && <p style={{ fontSize: 13, color: '#666', marginBottom: 20, lineHeight: 1.6 }}>{q.description}</p>}
+
           {q.type === 'radio' && q.options?.map(opt => (
             <div key={opt.value}>
               <RadioCard checked={answers[q.id] === opt.value} onChange={() => setAnswers(a => ({...a, [q.id]: opt.value}))}>
                 {opt.label}
               </RadioCard>
-              {opt.price !== undefined && <div style={{ marginLeft: 34, fontSize: 13, color: '#666', marginBottom: 4 }}>${Number(opt.price).toFixed(2)}</div>}
+              {opt.price !== undefined && (
+                <div style={{ marginLeft: 34, fontSize: 13, color: '#666', marginBottom: 4 }}>${Number(opt.price).toFixed(2)}</div>
+              )}
             </div>
           ))}
+
           {q.type === 'counter' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 12 }}>
-              <button onClick={() => setAnswers(a => ({...a, [q.id]: Math.max(0, (a[q.id] || 0) - 1)}))} style={{ width: 32, height: 32, border: '1px solid #ccc', borderRadius: 4, fontSize: 20, cursor: 'pointer', background: '#fff' }}>−</button>
+              <button onClick={() => setAnswers(a => ({...a, [q.id]: Math.max(0, (a[q.id] || 0) - 1)}))}
+                style={{ width: 32, height: 32, border: '1px solid #ccc', borderRadius: 4, fontSize: 20, cursor: 'pointer', background: '#fff' }}>−</button>
               <span style={{ fontSize: 16, minWidth: 30, textAlign: 'center' }}>{answers[q.id] || 0}</span>
-              <button onClick={() => setAnswers(a => ({...a, [q.id]: (a[q.id] || 0) + 1}))} style={{ width: 32, height: 32, border: '1px solid #ccc', borderRadius: 4, fontSize: 20, cursor: 'pointer', background: '#fff' }}>+</button>
+              <button onClick={() => setAnswers(a => ({...a, [q.id]: (a[q.id] || 0) + 1}))}
+                style={{ width: 32, height: 32, border: '1px solid #ccc', borderRadius: 4, fontSize: 20, cursor: 'pointer', background: '#fff' }}>+</button>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{q.label}</div>
                 <div style={{ fontSize: 13, color: '#666' }}>${q.pricePerUnit} per copy</div>
               </div>
             </div>
           )}
+
           {q.type === 'checkbox' && q.options?.map(opt => (
             <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', cursor: 'pointer' }}>
               <input
@@ -686,6 +663,7 @@ function Step4Services({ order, setOrder, onNext, onBack }) {
               {opt.price !== undefined && <span style={{ fontSize: 13, color: '#666' }}>${Number(opt.price).toFixed(2)}</span>}
             </label>
           ))}
+
           <div style={{ marginTop: 24 }}><Btn onClick={handleNext}>CONTINUE</Btn></div>
           <div style={{ marginTop: 16, textAlign: 'right', color: '#999', fontSize: 13 }}>Step {subStep} of {total}</div>
         </div>
@@ -699,46 +677,46 @@ function Step4Services({ order, setOrder, onNext, onBack }) {
 }
 
 // ─── STEP 5: COMPLETION ─────────────────────────────────────────────────
-// FIX: Receipt is now fully synced from actual order state
-// FIX: Edit buttons navigate back to the correct step
 function Step5Completion({ order, setStep, onBack }) {
-  const [payTab, setPayTab] = useState('now')
+  const [payTab, setPayTab]     = useState('now')
   const [cardInfo, setCardInfo] = useState({ name: '', number: '', expiry: '', cvc: '', street: '', unit: '', city: '', state: 'SD', zip: '', email: '', phone: '' })
-  const [agreed1, setAgreed1] = useState(false)
-  const [agreed2, setAgreed2] = useState(false)
-  const [agreed3, setAgreed3] = useState(false)
-  const [signature, setSignature] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const [caseId, setCaseId] = useState('')
+  const [agreed1, setAgreed1]   = useState(false)
+  const [agreed2, setAgreed2]   = useState(false)
+  const [agreed3, setAgreed3]   = useState(false)
+  const [signature, setSignature]   = useState('')
+  const [submitted, setSubmitted]   = useState(false)
+  const [caseId, setCaseId]         = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [stripeError, setStripeError] = useState('')
 
-  const pkg = order.selectedPackage
+  const pkg    = order.selectedPackage
   const casket = order.casket
-  const vault = order.vault
-  const keepsakeEntries = order.keepsakes || {}
-  // FIX: build keepsakes list with name/price from the service questions data if available,
-  // or just use IDs + qty for now (requires keepsake data passed in order)
-  const keepsakeItems = Object.entries(keepsakeEntries)
-    .filter(([, qty]) => qty > 0)
-    .map(([id, qty]) => ({ id, qty }))
+  const vault  = order.vault
 
-  // FIX: Calculate additional services cost from actual question answers
-  // serviceQuestions are stored in order.serviceQuestions (set in Step4)
+  const keepsakeEntries  = order.keepsakes    || {}
   const serviceQuestions = order.serviceQuestions || []
-  const services = order.services || {}
+  const services         = order.services     || {}
+  const keepsakeData     = order.keepsakeData || []
 
+  // Keepsake lines
+  const keepsakeItems = Object.entries(keepsakeEntries).filter(([, qty]) => qty > 0).map(([id, qty]) => ({ id, qty }))
+  let keepsakeTotal = 0
+  const keepsakeLines = keepsakeItems.map(({ id, qty }) => {
+    // Match by _id or id
+    const data = keepsakeData.find(k => String(getId(k)) === String(id))
+    const price = data ? data.price * qty : 0
+    keepsakeTotal += price
+    return { label: data ? `${data.name} ×${qty}` : `Keepsake ×${qty}`, val: price }
+  })
+
+  // Additional service lines
   let additionalServicesTotal = 0
   const additionalServiceLines = []
-
   serviceQuestions.forEach(q => {
     const answer = services[q.id]
     if (q.type === 'radio' && answer) {
       const opt = q.options?.find(o => o.value === answer)
-      if (opt && opt.price && opt.price > 0) {
-        additionalServicesTotal += opt.price
-        additionalServiceLines.push({ label: `${q.question}: ${opt.label}`, val: opt.price })
-      }
+      if (opt?.price > 0) { additionalServicesTotal += opt.price; additionalServiceLines.push({ label: `${q.question}: ${opt.label}`, val: opt.price }) }
     }
     if (q.type === 'counter' && answer > 0) {
       const lineTotal = answer * (q.pricePerUnit || 0)
@@ -748,65 +726,46 @@ function Step5Completion({ order, setStep, onBack }) {
     if (q.type === 'checkbox' && Array.isArray(answer)) {
       answer.forEach(val => {
         const opt = q.options?.find(o => o.value === val)
-        if (opt && opt.price && opt.price > 0) {
-          additionalServicesTotal += opt.price
-          additionalServiceLines.push({ label: `${q.question}: ${opt.label}`, val: opt.price })
-        }
+        if (opt?.price > 0) { additionalServicesTotal += opt.price; additionalServiceLines.push({ label: `${q.question}: ${opt.label}`, val: opt.price }) }
       })
     }
   })
 
-  // FIX: Keepsakes cost
-  let keepsakeTotal = 0
-  // Note: keepsake prices are in order.keepsakeData if passed, otherwise 0
-  // We need keepsake data — ideally passed through order state
-  // For now reflect qty lines with price if stored in order.keepsakeData
-  const keepsakeData = order.keepsakeData || []
-  const keepsakeLines = keepsakeItems.map(({ id, qty }) => {
-    const data = keepsakeData.find(k => String(k.id) === String(id))
-    const price = data ? data.price * qty : 0
-    keepsakeTotal += price
-    return { label: data ? `${data.name} ×${qty}` : `Keepsake ×${qty}`, val: price }
-  })
-
-  const pkgPrice = pkg?.price || 0
-  const casketPrice = casket?.price || 0
-  const vaultPrice = vault?.price || 0
+  const pkgPrice      = pkg?.price    || 0
+  const casketPrice   = casket?.price || 0
+  const vaultPrice    = vault?.price  || 0
   const vaultSetupFee = vault ? 500 : 0
-
   const subtotal = pkgPrice + casketPrice + vaultPrice + vaultSetupFee + additionalServicesTotal + keepsakeTotal
-  const tax = subtotal * 0.062
+  const tax        = subtotal * 0.062
   const processFee = subtotal * 0.032
-  const total = subtotal + tax + processFee
+  const total      = subtotal + tax + processFee
 
   const handleSubmit = async () => {
     setSubmitting(true)
     setStripeError('')
     try {
       if (payTab === 'now') {
-        // Keep same UI, but redirect to Stripe Checkout (hosted).
         const r = await api.post('/api/stripe/checkout-session', { ...order })
-        if (r?.url) {
-          window.location.href = r.url
-          return
-        }
+        if (r?.url) { window.location.href = r.url; return }
         setStripeError(r?.error || 'Unable to start payment. Please try again.')
       } else {
         const result = await api.post('/api/orders', { ...order, payment: { method: 'pay_later', ...cardInfo } })
         if (result.success) { setCaseId(result.caseId); setSubmitted(true) }
+        else setStripeError(result?.error?.message || 'Order submission failed. Please try again.')
       }
+    } catch (e) {
+      setStripeError('Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  // After Stripe redirects back to /order?stripe_success=1&session_id=...
+  // Handle Stripe redirect back
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const ok = params.get('stripe_success')
+    const params    = new URLSearchParams(window.location.search)
+    const ok        = params.get('stripe_success')
     const sessionId = params.get('session_id')
     if (!ok || !sessionId) return
-
     ;(async () => {
       try {
         setSubmitting(true)
@@ -814,17 +773,12 @@ function Step5Completion({ order, setStep, onBack }) {
         if (r?.success) {
           setCaseId(r.caseId)
           setSubmitted(true)
-          // Clean URL so refresh doesn't re-confirm
-          const clean = window.location.pathname
-          window.history.replaceState({}, '', clean)
+          window.history.replaceState({}, '', window.location.pathname)
           return
         }
         setStripeError(r?.error || 'Payment verification failed. Please contact support.')
-      } catch (e) {
-        setStripeError('Payment verification failed. Please contact support.')
-      } finally {
-        setSubmitting(false)
-      }
+      } catch { setStripeError('Payment verification failed. Please contact support.') }
+      finally  { setSubmitting(false) }
     })()
   }, [])
 
@@ -853,7 +807,6 @@ function Step5Completion({ order, setStep, onBack }) {
           <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: '1px solid #eee' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>Service package</span>
-              {/* FIX: Edit navigates back to step 0 (packages) */}
               <button onClick={() => setStep(0)} style={{ background: 'none', border: 'none', color: '#2e7d6b', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>Edit</button>
             </div>
             {pkg ? (
@@ -871,28 +824,21 @@ function Step5Completion({ order, setStep, onBack }) {
                   ))}
                 </div>
               </>
-            ) : (
-              <div style={{ fontSize: 13, color: '#9ca3af' }}>No package selected</div>
-            )}
+            ) : <div style={{ fontSize: 13, color: '#9ca3af' }}>No package selected</div>}
           </div>
 
           {/* Memorial Goods */}
           <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: '1px solid #eee' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>Memorial Goods</span>
-              {/* FIX: Edit navigates back to step 1 (memorial goods) */}
               <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#2e7d6b', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>Edit</button>
             </div>
-            {casket ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                <span>{casket.name}</span><span>${casketPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-              </div>
-            ) : <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>No casket selected</div>}
-            {vault ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                <span>{vault.name}</span><span>${vaultPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-              </div>
-            ) : <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>No vault selected</div>}
+            {casket
+              ? <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}><span>{casket.name}</span><span>${casketPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+              : <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>No casket selected</div>}
+            {vault
+              ? <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}><span>{vault.name}</span><span>${vaultPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+              : <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>No vault selected</div>}
             {keepsakeLines.filter(l => l.val > 0).map((l, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                 <span>{l.label}</span><span>${l.val.toFixed(2)}</span>
@@ -900,11 +846,10 @@ function Step5Completion({ order, setStep, onBack }) {
             ))}
           </div>
 
-          {/* Additional services from actual question answers */}
+          {/* Additional services */}
           <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: '1px solid #eee' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>Additional services and required fees</span>
-              {/* FIX: Edit navigates back to step 3 (services) */}
               <button onClick={() => setStep(3)} style={{ background: 'none', border: 'none', color: '#2e7d6b', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>Edit</button>
             </div>
             {vault && (
@@ -916,9 +861,7 @@ function Step5Completion({ order, setStep, onBack }) {
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                 <span>{label}</span><span>${Number(val).toFixed(2)}</span>
               </div>
-            )) : (
-              <div style={{ fontSize: 13, color: '#9ca3af' }}>No additional charges</div>
-            )}
+            )) : <div style={{ fontSize: 13, color: '#9ca3af' }}>No additional charges</div>}
           </div>
 
           {/* Summary */}
@@ -926,16 +869,14 @@ function Step5Completion({ order, setStep, onBack }) {
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Summary</div>
             {[
               { label: 'Total before tax & processing fee', val: subtotal },
-              { label: 'Tax collected (6.2%)', val: tax },
-              { label: 'Payment processing fee (3.2%)', val: processFee },
+              { label: 'Tax collected (6.2%)',              val: tax },
+              { label: 'Payment processing fee (3.2%)',     val: processFee },
             ].map(({ label, val }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5, color: '#444' }}>
                 <span>{label}</span><span>${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
             ))}
           </div>
-
-          {/* Order total */}
           <div style={{ borderTop: '1px solid #ccc', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700 }}>
             <span>Order total</span><span>${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
           </div>
@@ -944,10 +885,10 @@ function Step5Completion({ order, setStep, onBack }) {
           <div style={{ borderTop: '1px solid #eee', marginTop: 24, paddingTop: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>Order details</div>
             {[
-              { label: 'Service provider', val: 'West River Funeral Directors' },
-              { label: 'Name of deceased', val: `${order.details?.deceasedFirst || ''} ${order.details?.deceasedLast || ''}`.trim() || 'N/A' },
-              { label: 'Pick up location', val: order.details?.facilityName ? `${order.details.facilityName}, ${order.details.city || ''}, ${order.details.state || 'SD'} ${order.details.zip || ''}`.trim() : 'N/A' },
-              { label: 'Delivery method', val: '' },
+              { label: 'Service provider',  val: 'West River Funeral Directors' },
+              { label: 'Name of deceased',  val: `${order.details?.deceasedFirst || ''} ${order.details?.deceasedLast || ''}`.trim() || 'N/A' },
+              { label: 'Pick up location',  val: order.details?.facilityName ? `${order.details.facilityName}, ${order.details.city || ''}, ${order.details.state || 'SD'} ${order.details.zip || ''}`.trim() : 'N/A' },
+              { label: 'Delivery method',   val: '' },
               { label: 'Method of payment', val: payTab === 'now' ? 'Credit Card' : 'Pay Later' },
             ].map(({ label, val }) => (
               <div key={label} style={{ marginBottom: 14 }}>
@@ -955,17 +896,14 @@ function Step5Completion({ order, setStep, onBack }) {
                 <div style={{ fontSize: 13, color: '#444' }}>{val || ''}</div>
               </div>
             ))}
-            {/* FIX: Edit details button */}
             <button onClick={() => setStep(2)} style={{ background: 'none', border: 'none', color: '#2e7d6b', cursor: 'pointer', fontSize: 12, padding: 0 }}>Edit order details →</button>
           </div>
 
-          {/* Back / Print */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid #eee' }}>
             <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 13 }}>‹ Back</button>
             <button onClick={() => window.print()} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 13 }}>Print page</button>
           </div>
 
-          {/* Legal text */}
           <div style={{ marginTop: 16, padding: '14px 16px', border: '1px solid #e0e0e0', borderRadius: 4, fontSize: 11.5, color: '#555', lineHeight: 1.7 }}>
             <p style={{ marginBottom: 10 }}>Charges are only for those items that you selected or that are required. If we are required by law or by a cemetery or crematory to use any items, we will explain the reasons in writing here: none.</p>
             <p style={{ marginBottom: 10 }}>If you selected an arrangement that may require embalming, such as an arrangement with viewing, you may have to pay for embalming. You do not have to pay for embalming you did not approve if you selected arrangements such as a direct cremation or immediate burial. If we charged for embalming, we will explain why here: none.</p>
@@ -982,7 +920,7 @@ function Step5Completion({ order, setStep, onBack }) {
               <button key={tab} onClick={() => setPayTab(tab)} style={{
                 flex: 1, padding: '9px 0', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 background: payTab === tab ? '#2e2a2a' : '#fff',
-                color: payTab === tab ? '#fff' : '#333',
+                color:      payTab === tab ? '#fff'    : '#333',
               }}>
                 Pay {tab === 'now' ? 'Now' : 'Later'}
               </button>
@@ -992,39 +930,33 @@ function Step5Completion({ order, setStep, onBack }) {
           {payTab === 'now' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               <p style={{ fontSize: 13, color: '#555', marginBottom: 14 }}>Select Pay Now to complete with your card today.</p>
-
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, color: '#444', display: 'block', marginBottom: 4 }}>Cardholder name</label>
                 <input value={cardInfo.name} onChange={e => setCardInfo(c => ({...c, name: e.target.value}))}
                   style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}/>
               </div>
-
               <div style={{ border: '1px solid #ccc', borderRadius: 6, padding: '12px 14px', marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: '#444', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span>💳</span><span style={{ fontWeight: 600 }}>Card</span>
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontSize: 12, color: '#444', display: 'block', marginBottom: 4 }}>Card number</label>
-                  <input value={cardInfo.number} onChange={e => setCardInfo(c => ({...c, number: e.target.value}))}
-                    placeholder="1234 1234 1234 1234"
+                  <input value={cardInfo.number} onChange={e => setCardInfo(c => ({...c, number: e.target.value}))} placeholder="1234 1234 1234 1234"
                     style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}/>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
                     <label style={{ fontSize: 12, color: '#444', display: 'block', marginBottom: 4 }}>Expiration date</label>
-                    <input value={cardInfo.expiry} onChange={e => setCardInfo(c => ({...c, expiry: e.target.value}))}
-                      placeholder="MM / YY"
+                    <input value={cardInfo.expiry} onChange={e => setCardInfo(c => ({...c, expiry: e.target.value}))} placeholder="MM / YY"
                       style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}/>
                   </div>
                   <div>
                     <label style={{ fontSize: 12, color: '#444', display: 'block', marginBottom: 4 }}>Security code</label>
-                    <input value={cardInfo.cvc} onChange={e => setCardInfo(c => ({...c, cvc: e.target.value}))}
-                      placeholder="CVC"
+                    <input value={cardInfo.cvc} onChange={e => setCardInfo(c => ({...c, cvc: e.target.value}))} placeholder="CVC"
                       style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}/>
                   </div>
                 </div>
               </div>
-
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#1a1a1a' }}>Billing address</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                 <div style={{ gridColumn: '1/-1' }}>
@@ -1057,7 +989,6 @@ function Step5Completion({ order, setStep, onBack }) {
                     style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}/>
                 </div>
               </div>
-
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#1a1a1a' }}>Contact information</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
                 <div>
@@ -1096,7 +1027,6 @@ function Step5Completion({ order, setStep, onBack }) {
               <input type="checkbox" checked={agreed2} onChange={e => setAgreed2(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }}/>
               I understand and agree that I must contact the funeral home if transportation has not been arranged.
             </label>
-
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#1a1a1a' }}>Electronic Signature</div>
             <p style={{ fontSize: 12, color: '#555', marginBottom: 12, lineHeight: 1.6 }}>An electronic signature is needed before payment. By typing your first and last name below, you agree that this is a legal representation of your signature.</p>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: '#444', marginBottom: 12, cursor: 'pointer', lineHeight: 1.5 }}>
@@ -1117,7 +1047,8 @@ function Step5Completion({ order, setStep, onBack }) {
                 color: '#fff', border: 'none', borderRadius: 4, fontSize: 14, fontWeight: 600,
                 cursor: !submitting && agreed1 && agreed2 && agreed3 && signature ? 'pointer' : 'not-allowed',
                 letterSpacing: 0.3,
-              }}>
+              }}
+            >
               {submitting ? 'Processing...' : 'Submit payment'}
             </button>
             {stripeError && (
@@ -1133,34 +1064,29 @@ function Step5Completion({ order, setStep, onBack }) {
 }
 
 // ─── ROOT: OrderPage ─────────────────────────────────────────────────────
-// FIX: setStep passed down to Step5 so Edit buttons work
-// FIX: keepsake data stored in order state so receipt can price them
 export default function OrderPage() {
-  const [step, setStep] = useState(0)
+  const [step, setStep]   = useState(0)
   const [order, setOrder] = useState({})
 
-  // FIX: When user enters Step2, load and cache keepsake data in order state
-  const handleSetStep = (s) => {
-    setStep(s)
-  }
+  const handleSetStep = (s) => setStep(s)
 
-  // Load keepsake prices into order state when going to step 1
+  // Cache keepsake prices in order state when entering step 1
   useEffect(() => {
     if (step === 1) {
-      api.get('/api/keepsakes').then(data => {
-        setOrder(o => ({ ...o, keepsakeData: data }))
-      }).catch(() => {})
+      api.get('/api/keepsakes')
+        .then(d => setOrder(o => ({ ...o, keepsakeData: Array.isArray(d) ? d : [] })))
+        .catch(() => {})
     }
   }, [step])
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
       <StepBar current={step} onNavigate={handleSetStep}/>
-      {step === 0 && <Step1Packages order={order} setOrder={setOrder} onNext={() => handleSetStep(1)}/>}
+      {step === 0 && <Step1Packages     order={order} setOrder={setOrder} onNext={() => handleSetStep(1)}/>}
       {step === 1 && <Step2MemorialGoods order={order} setOrder={setOrder} onNext={() => handleSetStep(2)} onBack={() => handleSetStep(0)}/>}
-      {step === 2 && <Step3Details order={order} setOrder={setOrder} onNext={() => handleSetStep(3)} onBack={() => handleSetStep(1)}/>}
-      {step === 3 && <Step4Services order={order} setOrder={setOrder} onNext={() => handleSetStep(4)} onBack={() => handleSetStep(2)}/>}
-      {step === 4 && <Step5Completion order={order} setStep={handleSetStep} onBack={() => handleSetStep(3)}/>}
+      {step === 2 && <Step3Details      order={order} setOrder={setOrder} onNext={() => handleSetStep(3)} onBack={() => handleSetStep(1)}/>}
+      {step === 3 && <Step4Services     order={order} setOrder={setOrder} onNext={() => handleSetStep(4)} onBack={() => handleSetStep(2)}/>}
+      {step === 4 && <Step5Completion   order={order} setStep={handleSetStep} onBack={() => handleSetStep(3)}/>}
       <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 12, color: '#aaa' }}>
         Need help? Call us at 605-787-3940
       </div>
